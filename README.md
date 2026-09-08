@@ -1,40 +1,41 @@
-# Enterprise HR Policy & Employee Support Agentic RAG Copilot
+# Enterprise Insurance Claims Policy & Coverage Copilot
 
-An end-to-end Forward Deployed Engineer (FDE) project that converts an Agentic RAG workflow into a deployable internal HR product using LangGraph, FastAPI, Pinecone, OpenAI, Tavily, HTML, CSS, and JavaScript.
+An end-to-end Forward Deployed Engineer (FDE) project that converts an Agentic RAG workflow into a deployable internal insurance claims support product using LangGraph, FastAPI, Pinecone, OpenAI, Tavily, HTML, CSS, and JavaScript.
 
 ## 1. Business Problem
 
 ### Customer
-NovaRetail, a fictional 3,000-employee retail company.
+ShieldWave Insurance, a fictional multi-state home & auto insurer with ~1,200 claims agents and adjusters.
 
 ### Problem
-The HR team maintains many internal documents: leave policies, remote-work rules, payroll guidance, benefits information, onboarding procedures, conduct policies, and HR operations runbooks.
+The claims team maintains many internal documents: homeowner and auto policy wordings, coverage exclusions, deductible schedules, claims intake procedures, escalation rules, and HR-adjacent operations runbooks.
 
-Employees still send repetitive HR questions because they do not know where the correct policy lives, keyword search returns too many documents, generic chatbots may invent policy details, internal documents may not cover current public regulations, and some questions require fresh external information.
+Agents and policyholders still ask repetitive coverage questions because they do not know which clause applies, keyword search returns too many loosely related policy sections, generic chatbots may confidently state a coverage determination even when the evidence is weak, internal documents may not reflect current state regulations, and some questions depend on fresh external information (disaster declarations, filing deadline extensions).
 
 ### Example
-An employee asks:
+An employee/agent asks:
 
-> “How many annual leave days do employees receive?”
+> "Is water damage from a burst pipe covered under a standard homeowner policy?"
 
-The answer exists in the private company HR knowledge base, so the system should answer from internal policy without searching the public internet.
+The answer exists in ShieldWave's private policy wording, so the system should answer from internal policy — citing the specific clause — without searching the public internet.
 
-Another employee asks:
+Another agent asks:
 
-> “What are the latest public holiday rules in Bangladesh?”
+> "What's the extended claims filing deadline after the recent Texas flooding declaration?"
 
-The internal KB may not contain current public information. The system should recognize weak private evidence, use external search, grade the evidence, and clearly identify the answer as external information requiring HR validation.
+The internal KB may not contain a disaster declared last week. The system should recognize weak private evidence, use external search, grade the evidence, and clearly identify the answer as external information requiring adjuster/compliance validation before it's used in an actual claim decision.
 
 ### Business Goal
-Build a secure HR Policy Copilot that:
+Build a secure Claims Policy Copilot that:
 
-1. Searches trusted private HR knowledge first.
-2. Checks whether retrieved evidence is sufficient.
+1. Searches trusted private policy/claims knowledge first.
+2. Checks whether retrieved evidence names a specific clause or exclusion.
 3. Uses web search only when private knowledge is insufficient.
-4. Rewrites weak queries and retries.
-5. Generates grounded answers.
-6. Shows the LangGraph decision path for transparency and debugging.
-7. Lets authorized HR staff add new company documents.
+4. Rewrites weak/ambiguous queries (missing policy line, state, or peril) and retries.
+5. Generates grounded, clause-cited answers.
+6. Flags any externally-sourced answer as requiring adjuster review.
+7. Shows the LangGraph decision path for transparency and auditability.
+8. Lets authorized claims/compliance staff add new policy documents.
 
 ## 2. Why This Is an FDE Project
 
@@ -67,7 +68,7 @@ Observe + Improve
 ![System architecture](docs/architecture.png)
 
 ```text
-Employee / HR User
+Policyholder / Claims Agent
         ↓
 HTML/CSS/JavaScript Web UI
         ↓ POST /api/chat
@@ -77,12 +78,12 @@ LangGraph Agentic RAG Controller
         ↓
  ┌───────────────┬─────────────────┐
  ↓               ↓
-Private HR KB    Tavily Web Search
-Pinecone         (fallback only)
+Private Policy KB    Tavily Web Search
+Pinecone              (regulatory fallback only)
  └───────┬───────┘
          ↓
 OpenAI LLM
-Grounded Answer
+Grounded, Clause-Cited Answer
 ```
 
 ## 4. Agentic RAG Workflow
@@ -93,7 +94,7 @@ Question
 [1] Route Question
    ├── Greeting / simple chat ─────────→ Direct Answer
    │
-   └── HR / policy question
+   └── Claims / coverage question
                 ↓
 [2] Retrieve from Private Pinecone KB
                 ↓
@@ -111,13 +112,14 @@ Generate from KB   [4] Tavily Web Search
                   GOOD        WEAK
                     │          │
                     ▼          ▼
-              Generate Web  [6] Rewrite Query
-                               ↓
+       Generate Web (flag:  [6] Rewrite Query
+       adjuster review)         ↓
                          Retry Private KB
                                ↓
                         Max retry reached?
                                ↓
                     Insufficient Evidence
+                    (flag: adjuster review)
 ```
 
 ## 5. Technology Stack
@@ -127,17 +129,17 @@ Generate from KB   [4] Tavily Web Search
 | Agent workflow | LangGraph | Stateful routing and conditional decisions |
 | LLM | OpenAI | Routing, grading, rewriting, answer generation |
 | Embeddings | OpenAI `text-embedding-3-small` | Vector embeddings |
-| Vector DB | Pinecone | Private enterprise HR knowledge base |
-| External search | Tavily | Fallback when company HR KB is insufficient |
+| Vector DB | Pinecone | Private enterprise policy/claims knowledge base |
+| External search | Tavily | Fallback for state regulations & disaster declarations |
 | API | FastAPI | Backend and REST endpoints |
-| Frontend | HTML/CSS/JavaScript | Employee-facing interface |
-| Audit | SQLite | Decision-path logging |
+| Frontend | HTML/CSS/JavaScript | Agent- and policyholder-facing interface |
+| Audit | SQLite | Decision-path logging + adjuster-review flag |
 | Packaging | Docker | Reproducible deployment |
 
 ## 6. Project Structure
 
 ```text
-Enterprise-HR-Policy-Agentic-RAG-Copilot/
+Enterprise-Insurance-Claims-Agentic-RAG-Copilot/
 ├── app/
 │   ├── api/routes.py
 │   ├── core/config.py
@@ -149,13 +151,15 @@ Enterprise-HR-Policy-Agentic-RAG-Copilot/
 │   ├── services/ingestion.py
 │   └── main.py
 ├── data/sample_kb/
-│   ├── company_hr_handbook.md
-│   └── hr_operations_runbook.md
+│   ├── homeowner_policy_wording.md
+│   └── claims_handling_runbook.md
 ├── static/
 │   ├── css/style.css
 │   └── js/app.js
 ├── templates/index.html
 ├── uploads/
+├── docs/
+│   └── architecture.png
 ├── Dockerfile
 ├── ingest_sample_kb.py
 ├── requirements.txt
@@ -197,15 +201,16 @@ Copy `.env.example` to `.env` and add your keys.
 OPENAI_API_KEY=your_openai_api_key_here
 TAVILY_API_KEY=your_tavily_api_key_here
 PINECONE_API_KEY=your_pinecone_api_key_here
-PINECONE_INDEX_NAME=fde-hr-policy-rag
-PINECONE_NAMESPACE=company-hr-kb
+PINECONE_INDEX_NAME=shieldwave-claims-rag
+PINECONE_NAMESPACE=company-policy-kb
 OPENAI_MODEL=gpt-4o-mini
 EMBEDDING_MODEL=text-embedding-3-small
 ADMIN_API_KEY=change-me-in-production
 APP_ENV=development
+MAX_REWRITES=2
 ```
 
-### Step 4 — Load sample HR knowledge
+### Step 4 — Load sample policy knowledge
 
 ```bash
 python ingest_sample_kb.py
@@ -222,41 +227,45 @@ Open `http://127.0.0.1:8080` and FastAPI docs at `http://127.0.0.1:8080/docs`.
 ## 8. Classroom Demo Scenarios
 
 ### Demo A — Private KB Success
-Ask: **How many annual leave days do employees receive?**
+Ask: **Is water damage from a burst pipe covered under a standard homeowner policy?**
 
 Expected path:
 
 ```text
-Router → KB
+Router → Claims question
 Private KB Retrieval
 KB Grade → GOOD
-Generate from Private KB
+Generate from Private KB (cites Section 3.1, $1,000 deductible)
 ```
 
 ### Demo B — Company Policy Question
-Ask: **How many days per week can I work remotely?**
+Ask: **What's the deductible for wind and hail damage?**
 
-Expected result: answer from the internal HR handbook, without web search.
+Expected result: answer from the internal policy wording table, without web search.
 
 ### Demo C — External / Current Information
-Ask: **What are the latest public holiday rules in Bangladesh?**
+Ask: **What's the extended claims filing deadline after the recent Texas flooding declaration?**
 
-Expected path when internal HR documents are insufficient:
+Expected path when internal policy documents are insufficient:
 
 ```text
-Router → KB
+Router → Claims question
 Private KB Retrieval
 KB Grade → WEAK
 Tavily Search
 Web Grade → GOOD
-Web Answer
+Web Answer (flagged: requires adjuster review)
 ```
 
 ### Demo D — Weak Query Rewrite
-Ask an ambiguous HR question such as: **What happens if mine is wrong?**
+Ask an ambiguous claims question such as: **What happens if my claim is wrong?**
 
-If neither private nor web evidence is sufficient, the workflow can rewrite the query, retry the KB, and eventually stop with insufficient evidence rather than hallucinating.
+If neither private nor web evidence is sufficient, the workflow rewrites the query to clarify policy line / state / peril, retries the KB, and eventually stops with an insufficient-evidence response (also flagged for adjuster review) rather than hallucinating a coverage determination.
 
-## 9. What Changed From the IT Support Reference
+## 9. What Changed From the HR Reference
 
-The application structure, graph topology, API shape, retrieval logic, ingestion layer, audit layer, Docker setup, and frontend behavior remain the same. Only domain-specific elements were changed: HR prompts, HR configuration names, UI wording, example questions, sample documents, and documentation.
+The application structure, graph topology, API shape, retrieval logic, ingestion layer, audit layer, Docker setup, and frontend behavior remain the same. What changed is domain-specific: coverage/claims prompts, Pinecone index and namespace names, UI wording, example questions, sample policy documents, the addition of a `requires_adjuster_review` compliance flag not present in the HR version, and this documentation.
+
+## Attribution
+
+This project's architecture pattern (LangGraph agentic RAG workflow, FastAPI + Pinecone + Tavily stack, ingestion/audit layers) is adapted from [entbappy's Enterprise HR Policy & Employee Support Agentic RAG Copilot](https://github.com/entbappy/Enterprise-HR-Policy-Employee-Support-Agentic-RAG-Copilot), licensed under Apache-2.0. Domain logic, prompts, sample data, and the adjuster-review compliance flag are original to this insurance adaptation.
